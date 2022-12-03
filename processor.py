@@ -247,4 +247,8 @@ def predict(x, chosen_model):
     class_list = ["has no cognitive impairment", "has mild cognitive impairment", "has Alzheimer's disease"]
     result = class_list[np.argmax(prediction)]
     st.success(f"Subject most likely **_{result}_**.")
+    for infile in os.listdir("./input"):
+        os.remove(os.path.join("./input", infile))
+    for outfile in os.listdir("./output"):
+        os.remove(os.path.join("./output", outfile))
     return
