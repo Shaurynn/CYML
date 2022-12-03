@@ -22,17 +22,16 @@ with st.container():
     with st.spinner('Loading model'):
         if col3.button("Prepare data"):
             if image is not None and atlas is not None and model_value is not None:
-                with open(os.path.join("./",image.name),"wb") as f:
+                with open(os.path.join("./input",image.name),"wb") as f:
                     f.write(image.getbuffer())
-                    plot(image_read(os.path.join("./",image.name)))
-                with open(os.path.join("./", atlas.name),"wb") as a:
+                with open(os.path.join("./input", atlas.name),"wb") as a:
                     a.write(atlas.getbuffer())
                 chosen_model = load_model(model_value)
             st.success("Ready")
 
     st.cache(allow_output_mutation=True)
     def detect_AD():
-        preprocess(os.path.join("./",image.name),os.path.join("./", atlas.name))
-        predict(f"./{image.name}_2d.npy", chosen_model)
+        preprocess(os.path.join("./input",image.name),os.path.join("./input", atlas.name))
+        predict(f"./output/{image.name}_2d.npy", chosen_model)
 
 trigger = col3.button('Predict', on_click=detect_AD)

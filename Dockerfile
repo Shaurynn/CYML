@@ -15,10 +15,10 @@ COPY . ./
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-RUN python fslinstaller.py -d /usr/fsl
-ENV FSLDIR=/usr/fsl/
-ENV PATH=$PATH:$FSLDIR
-ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$FSLDIR
+#RUN python fslinstaller.py -d /usr/fsl
+#ENV FSLDIR=/usr/fsl/
+#ENV PATH=$PATH:$FSLDIR
+#ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$FSLDIR
 #ENV FSLOUTPUTTYPE=NIFTI_GZ
 
 # Run the web service on container startup. Here we use the gunicorn

@@ -7,14 +7,11 @@ import os
 import gzip
 import shutil
 import tensorflow as tf
-from tensorflow.python.lib.io import file_io
-from nipype.interfaces.ants import RegistrationSynQuick
-from nipype.interfaces.ants.segmentation import BrainExtraction
+import matplotlib.pyplot as plt
 
 import numpy as np
 # Set numpy to print only 2 decimal digits for neatness
 np.set_printoptions(precision=2, suppress=True)
-
 
 IMG_SHAPE = (78, 110, 86)
 IMG_2D_SHAPE = (IMG_SHAPE[1] * 4, IMG_SHAPE[2] * 4)
@@ -188,6 +185,12 @@ def read_dataset(epochs, batch_size, filename):
 
 def preprocess(image, atlas):
     sitk_image = sitk.ReadImage(image)
+    arr_image = sitk.GetArrayFromImage(sitk_image)
+    slice_image = arr_image[:,:,50].T
+    plt.imshow(slice_image)
+    plt.savefig("./output/image.jpg")
+    st.image("./output/image.jpg")
+
     res_image = resample_img(sitk_image)
     atlas_img = sitk.ReadImage(atlas)
     atlas_img = resample_img(atlas_img)
@@ -197,19 +200,34 @@ def preprocess(image, atlas):
     #res_array = preprocessing.whitening(res_array)
 
     registrated_image = registrate(atlas_img, res_image, bspline=False)
-    sitk.WriteImage(registrated_image, f"./{image.split('/')[-1]}_registrated.nii")
-    print("Registration successfully completed")
+    sitk.WriteImage(registrated_image, f"./output/{image.split('/')[-1]}_registrated.nii")
+    st.success("Brain registration complete")
 
-    registrated_image = sitk.ReadImage(f"./{image.split('/')[-1]}_registrated.nii")
+    registrated_image = sitk.ReadImage(f"./output/{image.split('/')[-1]}_registrated.nii")
+    registrated_array = sitk.GetArrayFromImage(registrated_image)
+    slice_reg_image = registrated_array[50,:,:]
+    plt.imshow(slice_reg_image)
+    plt.savefig("./output/image_reg.jpg")
+    st.image("./output/image_reg.jpg")
+
+    registrated_image = sitk.ReadImage(f"./output/{image.split('/')[-1]}_registrated.nii")
     registrated_array = sitk.GetArrayFromImage(registrated_image)
 
-    skull_strip_nii(f"./{image.split('/')[-1]}_registrated.nii", f"./{image.split('/')[-1]}_stripped.nii", frac=0.2)
-    print("Skull Stripping successfully completed")
-    gz_extract(f"./{image.split('/')[-1]}_stripped.nii.gz")
+    skull_strip_nii(f"./output/{image.split('/')[-1]}_registrated.nii", f"./output/{image.split('/')[-1]}_stripped.nii", frac=0.2)
+    st.success("Brain extraction complete")
+    ss_image = sitk.ReadImage(f"./output/{image.split('/')[-1]}_stripped.nii")
+    ss_array = sitk.GetArrayFromImage(ss_image)
+    slice_ss_image = ss_array[50,:,:]
+    plt.imshow(slice_ss_image)
+    plt.savefig("./output/image_ss.jpg")
+    st.image("./output/image_ss.jpg")
+
+    gz_extract(f"./output/{image.split('/')[-1]}_stripped.nii.gz")
 
     image_2d = load_image_2D(f"./{image.split('/')[-1]}_stripped.nii")
-    np.save(f"./{image.split('/')[-1]}_2d", image_2d)
+    np.save(f"./output/{image.split('/')[-1]}_2d", image_2d)
     print("Image 2D conversion successfully completed")
+    os.remove(f"./{image.split('/')[-1]}_stripped.nii")
     return
 
 def predict(x, chosen_model):
@@ -219,8 +237,8 @@ def predict(x, chosen_model):
     label_test_array.append(0)#if 'CN' in folder else 1 if 'MCI' in folder else 2)
 
     np_test_array = np.array(image_test_array)
-    write_tfrecords(np_test_array, label_test_array, "./test.tfrecords")
-    Test = read_dataset(10, 1, './test.tfrecords')
+    write_tfrecords(np_test_array, label_test_array, "./output/test.tfrecords")
+    Test = read_dataset(10, 1, './output/test.tfrecords')
     print(Test)
     Test_array = list(Test.take(1).as_numpy_iterator())
     print(Test_array[0][0])
@@ -229,29 +247,4 @@ def predict(x, chosen_model):
     class_list = ["has no cognitive impairment", "has mild cognitive impairment", "has Alzheimer's disease"]
     result = class_list[np.argmax(prediction)]
     st.success(f"Subject most likely **_{result}_**.")
-    return
-
-def preprocess3d(image, atlas):
-    reg = RegistrationSynQuick()
-    reg.inputs.fixed_image = os.path.join("./",atlas.name)
-    reg.inputs.moving_image = os.path.join("./",image.name)
-    reg.inputs.num_threads = 2
-    reg.cmdline
-    os.path.join(f"antsRegistrationSyNQuick.sh -d 3 -f ./data/tpl-MNI305_T1w.nii.gz -r 32 -m ./{image} -n 2 -o ./ -p d")
-    reg.run()
-    print("Brain registration complete")
-    brainextraction = BrainExtraction()
-    brainextraction.inputs.dimension = 3
-    brainextraction.inputs.anatomical_image = os.path.join(f"./{image}_Warped.nii.gz")
-    brainextraction.inputs.brain_template = os.path.join(f"./data/tpl-MNI305_desc-head_mask.nii.gz")
-    brainextraction.inputs.brain_probability_mask = os.path.join(f"./data/tpl-MNI305_desc-brain_mask.nii.gz")
-    brainextraction.cmdline
-    os.path.join(f"antsBrainExtraction.sh -a ./{image}_Warped.nii.gz -m ./data/tpl-MNI305_desc-brain_mask.nii.gz -e ./data/tpl-MNI305_desc-head_mask.nii.gz -d 3 -s nii.gz -o ./")
-    brainextraction.run()
-    print("Brain extraction complete")
-
-    gz_extract(f"./{image.split('_')[0]}_.nii.gz")
-    image_2d = load_image_2D(f"./{image.split('_')[0]}_.nii")
-    np.save(f"./{image.split('_')[0]}_2d", image_2d)
-    print("Image 2D conversion complete")
     return
