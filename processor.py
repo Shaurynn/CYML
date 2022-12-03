@@ -218,8 +218,8 @@ def predict(x, chosen_model):
     image_test_array.append(np.load(x))
     label_test_array.append(0)#if 'CN' in folder else 1 if 'MCI' in folder else 2)
 
-    image_test_array = np.array(image_test_array)
-    write_tfrecords(image_test_array, label_test_array, "./test.tfrecords")
+    np_test_array = np.array(image_test_array)
+    write_tfrecords(np_test_array, label_test_array, "./test.tfrecords")
     Test = read_dataset(10, 1, './test.tfrecords')
     print(Test)
     Test_array = list(Test.take(1).as_numpy_iterator())
