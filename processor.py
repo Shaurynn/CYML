@@ -190,6 +190,7 @@ def preprocess(image, atlas):
     plt.imshow(slice_image)
     plt.savefig("./output/image.jpg")
     st.image("./output/image.jpg")
+    st.success("Original MRI image read")
 
     res_image = resample_img(sitk_image)
     atlas_img = sitk.ReadImage(atlas)
@@ -201,29 +202,24 @@ def preprocess(image, atlas):
 
     registrated_image = registrate(atlas_img, res_image, bspline=False)
     sitk.WriteImage(registrated_image, f"./output/{image.split('/')[-1]}_registrated.nii")
-    st.success("Brain registration complete")
-
     registrated_image = sitk.ReadImage(f"./output/{image.split('/')[-1]}_registrated.nii")
     registrated_array = sitk.GetArrayFromImage(registrated_image)
     slice_reg_image = registrated_array[50,:,:]
     plt.imshow(slice_reg_image)
     plt.savefig("./output/image_reg.jpg")
     st.image("./output/image_reg.jpg")
-
-    registrated_image = sitk.ReadImage(f"./output/{image.split('/')[-1]}_registrated.nii")
-    registrated_array = sitk.GetArrayFromImage(registrated_image)
+    st.success("Brain registration complete")
 
     skull_strip_nii(f"./output/{image.split('/')[-1]}_registrated.nii", f"./output/{image.split('/')[-1]}_stripped.nii", frac=0.2)
-    st.success("Brain extraction complete")
     ss_image = sitk.ReadImage(f"./output/{image.split('/')[-1]}_stripped.nii")
     ss_array = sitk.GetArrayFromImage(ss_image)
     slice_ss_image = ss_array[50,:,:]
     plt.imshow(slice_ss_image)
     plt.savefig("./output/image_ss.jpg")
     st.image("./output/image_ss.jpg")
+    st.success("Brain extraction complete")
 
     gz_extract(f"./output/{image.split('/')[-1]}_stripped.nii.gz")
-
     image_2d = load_image_2D(f"./{image.split('/')[-1]}_stripped.nii")
     np.save(f"./output/{image.split('/')[-1]}_2d", image_2d)
     print("Image 2D conversion successfully completed")
@@ -246,7 +242,12 @@ def predict(x, chosen_model):
     prediction = chosen_model.predict(Test_array[0][0])
     class_list = ["has no cognitive impairment", "has mild cognitive impairment", "has Alzheimer's disease"]
     result = class_list[np.argmax(prediction)]
-    st.success(f"Subject most likely **_{result}_**.")
+    if np.argmax(prediction) == 0:
+        st.success(f"Subject most likely **_{result}_**.", icon="✅")
+    elif np.argmax(prediction) == 1:
+        st.warning(f"Subject most likely **_{result}_**.", icon="⚠️")
+    elif np.argmax(prediction) == 2:
+        st.info(f"Subject most likely **_{result}_**.", icon="⚠️")
     for infile in os.listdir("./input"):
         os.remove(os.path.join("./input", infile))
     for outfile in os.listdir("./output"):
