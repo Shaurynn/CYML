@@ -38,6 +38,6 @@ with st.sidebar:
                     f.write(image.getbuffer())
                 chosen_model = load_model(model_value)
                 #st.success("Model loaded")
-                trigger = st.button('Being analysis', on_click=detect_AD)
+                trigger = st.button('Begin analysis', on_click=detect_AD)
             else:
                 st.error("Error: One or more input is/are missing.", icon="🚨")
