@@ -12,13 +12,15 @@ COPY . ./
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-#RUN python fslinstaller.py -d /usr/fsl
-#ENV FSLDIR=/usr/fsl/
-#ENV PATH=$PATH:$FSLDIR
-#ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$FSLDIR
-#ENV FSLOUTPUTTYPE=NIFTI_GZ
+RUN mkdir -p ~/usr/fsl
+RUN python fslinstaller.py -d /usr/fsl
+ENV FSLDIR=/usr/fsl/
+ENV PATH=$PATH:$FSLDIR
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$FSLDIR
+ENV FSLOUTPUTTYPE=NIFTI_GZ
 
-CMD streamlit run --server.port 8080 app.py
+#CMD streamlit run --server.port 8080 app.py
+ENTRYPOINT ["streamlit", "run", "app.py", "--server.port=8080", "--server.address=0.0.0.0"]
 
 # Run the web service on container startup. Here we use the gunicorn
 # webserver, with one worker process and 8 threads.
