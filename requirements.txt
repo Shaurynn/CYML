@@ -17,6 +17,7 @@ scikit-image
 nipype
 antspyx
 streamlit
+streamlit-extras
 
 # tests/linter
 black

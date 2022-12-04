@@ -1,5 +1,6 @@
 import SimpleITK as sitk
 import streamlit as st
+from streamlit_extras.switch_page_button import switch_page
 from dltk.io import preprocessing
 from nipype.interfaces import fsl
 import tensorflow as tf
@@ -7,14 +8,13 @@ import os
 import gzip
 import shutil
 import tensorflow as tf
-from tensorflow.python.lib.io import file_io
+import matplotlib.pyplot as plt
 from nipype.interfaces.ants import RegistrationSynQuick
 from nipype.interfaces.ants.segmentation import BrainExtraction
 
 import numpy as np
 # Set numpy to print only 2 decimal digits for neatness
 np.set_printoptions(precision=2, suppress=True)
-
 
 IMG_SHAPE = (78, 110, 86)
 IMG_2D_SHAPE = (IMG_SHAPE[1] * 4, IMG_SHAPE[2] * 4)
@@ -189,6 +189,12 @@ def read_dataset(epochs, batch_size, filename):
 def preprocess(image, atlas):
     sitk_image = sitk.ReadImage(image)
     arr_image = sitk.GetArrayFromImage(sitk_image)
+    slice_image = arr_image[:,:,50].T
+    plt.imshow(slice_image)
+    plt.savefig("./output/image.jpg")
+    st.image("./output/image.jpg")
+    st.success("Original MRI image read")
+
     res_image = resample_img(sitk_image)
     atlas_img = sitk.ReadImage(atlas)
     atlas_img = resample_img(atlas_img)
@@ -198,39 +204,31 @@ def preprocess(image, atlas):
     #res_array = preprocessing.whitening(res_array)
 
     registrated_image = registrate(atlas_img, res_image, bspline=False)
-    sitk.WriteImage(registrated_image, f"./{image.split('/')[-1]}_registrated.nii")
-    print("Registration successfully completed")
-
-    registrated_image = sitk.ReadImage(f"./{image.split('/')[-1]}_registrated.nii")
+    sitk.WriteImage(registrated_image, f"./output/{image.split('/')[-1]}_registrated.nii")
+    registrated_image = sitk.ReadImage(f"./output/{image.split('/')[-1]}_registrated.nii")
     registrated_array = sitk.GetArrayFromImage(registrated_image)
+    slice_reg_image = registrated_array[50,:,:]
+    plt.imshow(slice_reg_image)
+    plt.savefig("./output/image_reg.jpg")
+    st.image("./output/image_reg.jpg")
+    st.success("Brain registration complete")
 
-    skull_strip_nii(f"./{image.split('/')[-1]}_registrated.nii", f"./{image.split('/')[-1]}_stripped.nii", frac=0.2)
-    print("Skull Stripping successfully completed")
-    gz_extract(f"./{image.split('/')[-1]}_stripped.nii.gz")
+    skull_strip_nii(f"./output/{image.split('/')[-1]}_registrated.nii", f"./output/{image.split('/')[-1]}_stripped.nii", frac=0.2)
+    ss_image = sitk.ReadImage(f"./output/{image.split('/')[-1]}_stripped.nii")
+    ss_array = sitk.GetArrayFromImage(ss_image)
+    slice_ss_image = ss_array[50,:,:]
+    plt.imshow(slice_ss_image)
+    plt.savefig("./output/image_ss.jpg")
+    st.image("./output/image_ss.jpg")
+    st.success("Brain extraction complete")
 
+    gz_extract(f"./output/{image.split('/')[-1]}_stripped.nii.gz")
     image_2d = load_image_2D(f"./{image.split('/')[-1]}_stripped.nii")
-    np.save(f"./{image.split('/')[-1]}_2d", image_2d)
+    np.save(f"./output/{image.split('/')[-1]}_2d", image_2d)
     print("Image 2D conversion successfully completed")
+    os.remove(f"./{image.split('/')[-1]}_stripped.nii")
     return
 
-def predict(x, chosen_model):
-    image_test_array = []
-    label_test_array = []
-    image_test_array.append(np.load(x))
-    label_test_array.append(0)#if 'CN' in folder else 1 if 'MCI' in folder else 2)
-
-    np_test_array = np.array(image_test_array)
-    write_tfrecords(np_test_array, label_test_array, "./test.tfrecords")
-    Test = read_dataset(10, 1, './test.tfrecords')
-    print(Test)
-    Test_array = list(Test.take(1).as_numpy_iterator())
-    print(Test_array[0][0])
-    print(chosen_model.summary())
-    prediction = chosen_model.predict(Test_array[0][0])
-    class_list = ["has no cognitive impairment", "has mild cognitive impairment", "has Alzheimer's disease"]
-    result = class_list[np.argmax(prediction)]
-    st.success(f"Subject most likely **_{result}_**.")
-    return
 
 def preprocess3d(image, atlas):
     reg = RegistrationSynQuick()
@@ -255,4 +253,32 @@ def preprocess3d(image, atlas):
     image_2d = load_image_2D(f"./{image.split('_')[0]}_.nii")
     np.save(f"./{image.split('_')[0]}_2d", image_2d)
     print("Image 2D conversion complete")
+    return
+
+def predict(x, chosen_model):
+    image_test_array = []
+    label_test_array = []
+    image_test_array.append(np.load(x))
+    label_test_array.append(0)#if 'CN' in folder else 1 if 'MCI' in folder else 2)
+
+    np_test_array = np.array(image_test_array)
+    write_tfrecords(np_test_array, label_test_array, "./output/test.tfrecords")
+    Test = read_dataset(10, 1, './output/test.tfrecords')
+    print(Test)
+    Test_array = list(Test.take(1).as_numpy_iterator())
+    print(Test_array[0][0])
+    print(chosen_model.summary())
+    prediction = chosen_model.predict(Test_array[0][0])
+    class_list = ["has no cognitive impairment", "has mild cognitive impairment", "has Alzheimer's disease"]
+    #result = class_list[np.argmax(prediction)]
+    if np.argmax(prediction) == 2:
+        st.info(f"Subject most likely **_has Alzheimer's disease_**.", icon="⚠️")
+    elif np.argmax(prediction) == 1:
+        st.warning(f"Subject most likely **_has mild cognitize impairment_**.", icon="⚠️")
+    elif np.argmax(prediction) == 0:
+        st.success(f"Subject most likely shows no cognitive impairment.", icon="✅")
+    for infile in os.listdir("./input"):
+        os.remove(os.path.join("./input", infile))
+    for outfile in os.listdir("./output"):
+        os.remove(os.path.join("./output", outfile))
     return

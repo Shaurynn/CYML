@@ -1,5 +1,6 @@
 import SimpleITK as sitk
 import streamlit as st
+from streamlit_extras.switch_page_button import switch_page
 from dltk.io import preprocessing
 from nipype.interfaces import fsl
 import tensorflow as tf
@@ -65,64 +66,44 @@ def skull_strip_nii(original_img, destination_img, frac=0.2): #
     return res
 
 def gz_extract(zipfile):
-    file_name = (os.path.basename(zipfile)).rsplit('.',1)[0] #get file name for file within
+    file_name = (os.path.basename(zipfile)).rsplit('.',1)[0]
     with gzip.open(zipfile,"rb") as f_in, open(f"{zipfile.split('/')[0]}/{file_name}","wb") as f_out:
         shutil.copyfileobj(f_in, f_out)
-    os.remove(zipfile) # delete zipped file
+    os.remove(zipfile)
 
 def slices_matrix_2D(img):
-  # create the final 2D image
+
   image_2D = np.empty(IMG_2D_SHAPE)
 
-  # set the limits and the step
   TOP = 60
   BOTTOM = 30
   STEP = 2
   N_CUTS = 16
-
-  # iterator for the cuts
   cut_it = TOP
-  # iterator for the rows of the 2D final image
   row_it = 0
-  # iterator for the columns of the 2D final image
   col_it = 0
 
   for cutting_time in range(N_CUTS):
 
-    # cut
     cut = img[cut_it, :, :]
     cut_it -= STEP
 
-    # reset the row iterator and move the
-    # col iterator when needed
     if cutting_time in [4, 8, 12]:
       row_it = 0
       col_it += cut.shape[1]
 
-    # copy the cut to the 2D image
     for i in range(cut.shape[0]):
       for j in range(cut.shape[1]):
         image_2D[i + row_it, j + col_it] = cut[i, j]
     row_it += cut.shape[0]
 
-  # return the final 2D image, with 3 channels
-  # this is necessary for working with most pre-trained nets
   return np.repeat(image_2D[None, ...], 3, axis=0).T
 
 def load_image_2D(abs_path): #, labels
-  # obtain the label from the path (it is the last directory name)
-  #label = labels[abs_path.split('/')[-2]]
 
-  # load the image with SimpleITK
   sitk_image = sitk.ReadImage(abs_path)
-
-  # transform into a numpy array
   img = sitk.GetArrayFromImage(sitk_image)
-
-  # apply whitening
   img = preprocessing.whitening(img)
-
-  # make the 2D image
   img = slices_matrix_2D(img)
 
   return img
@@ -173,7 +154,6 @@ def _parse_image_function(example_proto):
 
 def read_dataset(epochs, batch_size, filename):
 
-    # filenames = [os.path.join(channel, channel_name + '.tfrecords')]
     dataset = tf.data.TFRecordDataset(filename)
 
     dataset = dataset.map(_parse_image_function, num_parallel_calls=10)
@@ -187,7 +167,7 @@ def preprocess(image, atlas):
     sitk_image = sitk.ReadImage(image)
     arr_image = sitk.GetArrayFromImage(sitk_image)
     slice_image = arr_image[:,:,50].T
-    plt.imshow(slice_image)
+    plt.imshow(slice_image, cmap="gray")
     plt.savefig("./output/image.jpg")
     st.image("./output/image.jpg")
     st.success("Original MRI image read")
@@ -196,16 +176,12 @@ def preprocess(image, atlas):
     atlas_img = sitk.ReadImage(atlas)
     atlas_img = resample_img(atlas_img)
 
-    #res_array = sitk.GetArrayFromImage(res_image)
-    #res_array = preprocessing.resize_image_with_crop_or_pad(res_array, img_size=(128, 192, 192), mode='symmetric')
-    #res_array = preprocessing.whitening(res_array)
-
     registrated_image = registrate(atlas_img, res_image, bspline=False)
     sitk.WriteImage(registrated_image, f"./output/{image.split('/')[-1]}_registrated.nii")
     registrated_image = sitk.ReadImage(f"./output/{image.split('/')[-1]}_registrated.nii")
     registrated_array = sitk.GetArrayFromImage(registrated_image)
     slice_reg_image = registrated_array[50,:,:]
-    plt.imshow(slice_reg_image)
+    plt.imshow(slice_reg_image, cmap="gray")
     plt.savefig("./output/image_reg.jpg")
     st.image("./output/image_reg.jpg")
     st.success("Brain registration complete")
@@ -214,7 +190,7 @@ def preprocess(image, atlas):
     ss_image = sitk.ReadImage(f"./output/{image.split('/')[-1]}_stripped.nii")
     ss_array = sitk.GetArrayFromImage(ss_image)
     slice_ss_image = ss_array[50,:,:]
-    plt.imshow(slice_ss_image)
+    plt.imshow(slice_ss_image, cmap="gray")
     plt.savefig("./output/image_ss.jpg")
     st.image("./output/image_ss.jpg")
     st.success("Brain extraction complete")
@@ -230,7 +206,7 @@ def predict(x, chosen_model):
     image_test_array = []
     label_test_array = []
     image_test_array.append(np.load(x))
-    label_test_array.append(0)#if 'CN' in folder else 1 if 'MCI' in folder else 2)
+    label_test_array.append(0)
 
     np_test_array = np.array(image_test_array)
     write_tfrecords(np_test_array, label_test_array, "./output/test.tfrecords")
@@ -240,14 +216,12 @@ def predict(x, chosen_model):
     print(Test_array[0][0])
     print(chosen_model.summary())
     prediction = chosen_model.predict(Test_array[0][0])
-    class_list = ["has no cognitive impairment", "has mild cognitive impairment", "has Alzheimer's disease"]
-    result = class_list[np.argmax(prediction)]
-    if np.argmax(prediction) == 0:
-        st.success(f"Subject most likely **_{result}_**.", icon="✅")
+    if np.argmax(prediction) == 2:
+        st.info(f"Subject most likely **_has Alzheimer's disease_**.", icon="⚠️")
     elif np.argmax(prediction) == 1:
-        st.warning(f"Subject most likely **_{result}_**.", icon="⚠️")
-    elif np.argmax(prediction) == 2:
-        st.info(f"Subject most likely **_{result}_**.", icon="⚠️")
+        st.warning(f"Subject most likely **_has mild cognitize impairment_**.", icon="⚠️")
+    elif np.argmax(prediction) == 0:
+        st.success(f"Subject most likely shows no cognitive impairment.", icon="✅")
     for infile in os.listdir("./input"):
         os.remove(os.path.join("./input", infile))
     for outfile in os.listdir("./output"):
