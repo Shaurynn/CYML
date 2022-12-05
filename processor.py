@@ -219,7 +219,7 @@ def predict(x, chosen_model):
     if np.argmax(prediction) == 2:
         st.info(f"Subject most likely **_has Alzheimer's disease_**.", icon="⚠️")
     elif np.argmax(prediction) == 1:
-        st.warning(f"Subject most likely **_has mild cognitize impairment_**.", icon="⚠️")
+        st.warning(f"Subject most likely **_has mild cognitive impairment_**.", icon="⚠️")
     elif np.argmax(prediction) == 0:
         st.success(f"Subject most likely shows no cognitive impairment.", icon="✅")
     for infile in os.listdir("./input"):
