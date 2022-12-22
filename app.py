@@ -1,6 +1,6 @@
 import streamlit as st
 import os
-from processor import preprocess, predict
+from processor import preprocess3d, predict
 from tensorflow.keras.models import load_model
 
 col1, col2, col3 = st.columns([1, 24, 1])
@@ -28,7 +28,7 @@ with st.sidebar:
 
     #st.cache(allow_output_mutation=True)
     def detect_AD():
-        preprocess(os.path.join("./input",image.name), atlas_value)
+        preprocess3d(os.path.join("./input",image.name), atlas_value)
         predict(f"./output/{image.name}_2d.npy", chosen_model)
 
     with st.spinner('Loading model'):
