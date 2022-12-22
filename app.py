@@ -29,7 +29,13 @@ with st.sidebar:
     #st.cache(allow_output_mutation=True)
     def detect_AD():
         preprocess3d(os.path.join("./input",image.name), atlas_value)
-        predict(f"./output/{image.name}_2d.npy", chosen_model)
+        for file in os.listdir("./"):
+            if ".nii.gz" in file:
+                image_file = os.path.join("./",file)
+                os.remove(image_file)
+            if ".mat" in file:
+                image_file = os.path.join("./",file)
+                os.remove(image_file)
 
     with st.spinner('Loading model'):
         if st.button("Load model"):

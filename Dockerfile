@@ -11,6 +11,7 @@ COPY . ./
 # Install production dependencies.
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
+RUN pip install SimpleITK-SimpleElastix
 
 RUN mkdir -p ~/usr/fsl
 RUN python fslinstaller.py -d /usr/fsl
