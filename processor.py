@@ -228,10 +228,10 @@ def preprocess3d(image, atlas):
     brainextraction = BrainExtraction()
     brainextraction.inputs.dimension = 3
     brainextraction.inputs.anatomical_image = os.path.join("./transformWarped.nii.gz")
-    brainextraction.inputs.brain_template = os.path.join("./data/tpl-MNI305_desc-head_mask.nii.gz")
-    brainextraction.inputs.brain_probability_mask = os.path.join("./data/tpl-MNI305_desc-brain_mask.nii.gz")
+    brainextraction.inputs.brain_template = os.path.join("./atlas/tpl-MNI305_desc-head_mask.nii.gz")
+    brainextraction.inputs.brain_probability_mask = os.path.join("./atlas/tpl-MNI305_desc-brain_mask.nii.gz")
     brainextraction.cmdline
-    f"antsBrainExtraction.sh -a ./transformWarped.nii.gz -m ./data/tpl-MNI305_desc-brain_mask.nii.gz -e ./data/tpl-MNI305_desc-head_mask.nii.gz -d 3 -o ./ -s nii.gz"
+    f"antsBrainExtraction.sh -a ./transformWarped.nii.gz -m ./atlas/tpl-MNI305_desc-brain_mask.nii.gz -e ./atlas/tpl-MNI305_desc-head_mask.nii.gz -d 3 -o ./ -s nii.gz"
     brainextraction.run()
     ants_ss = image_read("./highres001_BrainExtractionBrain.nii.gz")
     slice_ants_ss = ants_ss[:,:,50].T
