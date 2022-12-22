@@ -242,6 +242,13 @@ def preprocess3d(image, atlas):
     ants_ss[:,:,85]
     image_2d = ants_ss[:,:,85]
     np.save(f"./output/{image.split('/')[-1]}_2d", image_2d)
+    for file in os.listdir("./"):
+        if ".nii.gz" in file:
+            image_file = os.path.join("./",file)
+            os.remove(image_file)
+        if ".mat" in file:
+            image_file = os.path.join("./",file)
+            os.remove(image_file)
     return
 
 
