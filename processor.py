@@ -9,6 +9,8 @@ import gzip
 import shutil
 import tensorflow as tf
 import matplotlib.pyplot as plt
+from ants import image_read
+from nipype.interfaces.ants import RegistrationSynQuick, BrainExtraction
 
 import numpy as np
 # Set numpy to print only 2 decimal digits for neatness
