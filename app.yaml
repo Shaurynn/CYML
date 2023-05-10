@@ -1,0 +1,10 @@
+service: streamlit-final
+service_account: ds1016@ds1016.iam.gserviceaccount.com
+runtime: custom
+env: flex
+manual_scaling:
+  instances: 1
+resources:
+  cpu: 4
+  memory_gb: 16
+  disk_size_gb: 100
